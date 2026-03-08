@@ -1,0 +1,1105 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>食点生成菜谱</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: "Microsoft YaHei", "SimSun", sans-serif;
+            background-color: #f5f5dc;
+            background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23d4d4aa' fill-opacity='0.2'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+            color: #333;
+            line-height: 1.6;
+        }
+
+        /* 头部样式 */
+        header {
+            background: linear-gradient(135deg, #8b0000 0%, #a52a2a 100%);
+            color: #fff;
+            padding: 2rem 1rem;
+            text-align: center;
+            border-bottom: 5px solid #d4af37;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            font-family: "SimSun", serif;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            letter-spacing: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            font-style: italic;
+        }
+
+        /* 主容器 */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+
+        /* 筛选区域 */
+        .filter-section {
+            background: #fff;
+            border: 2px solid #d4af37;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+
+        .filter-group {
+            margin-bottom: 1.2rem;
+        }
+
+        .filter-group label {
+            display: block;
+            font-weight: bold;
+            color: #8b0000;
+            margin-bottom: 0.5rem;
+            font-size: 1.1rem;
+            border-left: 4px solid #d4af37;
+            padding-left: 0.5rem;
+        }
+
+        .filter-options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .filter-btn {
+            padding: 0.5rem 1rem;
+            border: 2px solid #ddd;
+            background: #fff;
+            cursor: pointer;
+            border-radius: 20px;
+            transition: all 0.2s;
+            font-size: 0.95rem;
+        }
+
+        .filter-btn:hover {
+            border-color: #8b0000;
+            color: #8b0000;
+        }
+
+        .filter-btn.active {
+            background: #8b0000;
+            color: #fff;
+            border-color: #8b0000;
+        }
+
+        /* 操作按钮 */
+        .action-btns {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 0.8rem 2rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #8b0000;
+            color: #fff;
+            border: 2px solid #8b0000;
+        }
+
+        .btn-primary:hover {
+            background: #a52a2a;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(139,0,0,0.3);
+        }
+
+        .btn-secondary {
+            background: #fff;
+            color: #8b0000;
+            border: 2px solid #8b0000;
+        }
+
+        .btn-secondary:hover {
+            background: #f5f5dc;
+        }
+
+        /* 保底提示 */
+        .fallback-notice {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            color: #856404;
+            display: none;
+        }
+
+        .fallback-notice.show {
+            display: block;
+        }
+
+        .fallback-notice strong {
+            color: #8b0000;
+        }
+
+        /* 统计信息 */
+        .stats {
+            text-align: center;
+            margin-bottom: 1.5rem;
+            color: #666;
+            font-size: 0.95rem;
+        }
+
+        .stats strong {
+            color: #8b0000;
+            font-size: 1.2rem;
+        }
+
+        /* 菜谱网格 */
+        .recipe-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+
+        /* 菜谱卡片 */
+        .recipe-card {
+            background: #fff;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            overflow: hidden;
+            transition: transform 0.2s, box-shadow 0.2s;
+            cursor: pointer;
+        }
+
+        .recipe-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+        }
+
+        .recipe-image {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            border-bottom: 3px solid #d4af37;
+        }
+
+        .recipe-content {
+            padding: 1.5rem;
+        }
+
+        .recipe-title {
+            font-size: 1.4rem;
+            color: #8b0000;
+            margin-bottom: 0.5rem;
+            font-family: "SimSun", serif;
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 0.5rem;
+        }
+
+        .recipe-meta {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .recipe-meta span {
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+
+        .recipe-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .tag {
+            background: #f5f5dc;
+            color: #8b4513;
+            padding: 0.2rem 0.6rem;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            border: 1px solid #d4af37;
+        }
+
+        .tag.avoid {
+            background: #ffe4e1;
+            color: #8b0000;
+            border-color: #8b0000;
+        }
+
+        .tag.fallback {
+            background: #e3f2fd;
+            color: #1565c0;
+            border-color: #2196f3;
+        }
+
+        /* 详情模态框 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 1000;
+            overflow-y: auto;
+        }
+
+        .modal-content {
+            background: #fff;
+            max-width: 800px;
+            margin: 2rem auto;
+            border-radius: 8px;
+            overflow: hidden;
+            position: relative;
+            border: 3px solid #d4af37;
+        }
+
+        .modal-header {
+            position: relative;
+            height: 300px;
+            overflow: hidden;
+        }
+
+        .modal-header img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: rgba(255,255,255,0.9);
+            border: 2px solid #8b0000;
+            color: #8b0000;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .modal-close:hover {
+            background: #8b0000;
+            color: #fff;
+        }
+
+        .modal-body {
+            padding: 2rem;
+        }
+
+        .modal-title {
+            font-size: 2rem;
+            color: #8b0000;
+            font-family: "SimSun", serif;
+            margin-bottom: 1rem;
+            text-align: center;
+            border-bottom: 3px double #d4af37;
+            padding-bottom: 1rem;
+        }
+
+        .section {
+            margin-bottom: 2rem;
+        }
+
+        .section-title {
+            font-size: 1.3rem;
+            color: #8b0000;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: bold;
+        }
+
+        .ingredients-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 0.8rem;
+        }
+
+        .ingredient-item {
+            background: #f9f9f9;
+            padding: 0.6rem;
+            border-left: 3px solid #d4af37;
+            border-radius: 0 4px 4px 0;
+        }
+
+        .steps-list {
+            counter-reset: step;
+            list-style: none;
+        }
+
+        .steps-list li {
+            position: relative;
+            padding-left: 3rem;
+            margin-bottom: 1.5rem;
+            line-height: 1.8;
+        }
+
+        .steps-list li::before {
+            counter-increment: step;
+            content: counter(step);
+            position: absolute;
+            left: 0;
+            top: 0;
+            background: #8b0000;
+            color: #fff;
+            width: 2rem;
+            height: 2rem;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+
+        .tips-box {
+            background: #fff8dc;
+            border: 2px solid #d4af37;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-top: 2rem;
+        }
+
+        .tips-title {
+            color: #8b0000;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+            font-size: 1.1rem;
+        }
+
+        /* 保底菜谱特殊标记 */
+        .fallback-badge {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: #2196f3;
+            color: #fff;
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            z-index: 10;
+        }
+
+        /* 空状态 - 理论上不会显示，因为保底机制 */
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: #666;
+        }
+
+        .empty-state h3 {
+            font-size: 1.5rem;
+            color: #8b0000;
+            margin-bottom: 1rem;
+        }
+
+        /* 页脚 */
+        footer {
+            text-align: center;
+            padding: 2rem;
+            color: #666;
+            border-top: 2px solid #d4af37;
+            margin-top: 3rem;
+            background: #fff;
+        }
+
+        /* 响应式 */
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 1.8rem;
+                letter-spacing: 0.2rem;
+            }
+            
+            .recipe-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .modal-content {
+                margin: 0;
+                border-radius: 0;
+                min-height: 100vh;
+            }
+        }
+    </style>
+<base target="_blank">
+</head>
+<body>
+    <header>
+        <h1>食点</h1>
+        <p>食一点好味餸啦</p>
+    </header>
+
+    <div class="container">
+        <!-- 筛选区域 -->
+        <div class="filter-section">
+            <div class="filter-group">
+                <label>口味选择（可多选）</label>
+                <div class="filter-options" id="tasteFilters">
+                    <button class="filter-btn" data-filter="taste" data-value="spicy">麻辣味</button>
+                    <button class="filter-btn" data-filter="taste" data-value="sour">酸辣味</button>
+                    <button class="filter-btn" data-filter="taste" data-value="sweet">香甜味</button>
+                    <button class="filter-btn" data-filter="taste" data-value="savory">咸鲜味</button>
+                    <button class="filter-btn" data-filter="taste" data-value="light">清淡味</button>
+                    <button class="filter-btn" data-filter="taste" data-value="rich">浓郁味</button>
+                </div>
+            </div>
+
+            <div class="filter-group">
+                <label>忌口排除（可多选，严格排除）</label>
+                <div class="filter-options" id="avoidFilters">
+                    <button class="filter-btn" data-filter="avoid" data-value="pork">猪肉</button>
+                    <button class="filter-btn" data-filter="avoid" data-value="beef">牛肉</button>
+                    <button class="filter-btn" data-filter="avoid" data-value="mutton">羊肉</button>
+                    <button class="filter-btn" data-filter="avoid" data-value="seafood">海鲜</button>
+                    <button class="filter-btn" data-filter="avoid" data-value="eggs">鸡蛋</button>
+                    <button class="filter-btn" data-filter="avoid" data-value="dairy">奶制品</button>
+                    <button class="filter-btn" data-filter="avoid" data-value="gluten">麸质</button>
+                    <button class="filter-btn" data-filter="avoid" data-value="spicy">辛辣食物</button>
+                </div>
+            </div>
+
+            <div class="filter-group">
+                <label>烹饪时间（单选）</label>
+                <div class="filter-options" id="timeFilters">
+                    <button class="filter-btn" data-filter="time" data-value="15">15分钟内</button>
+                    <button class="filter-btn" data-filter="time" data-value="30">30分钟内</button>
+                    <button class="filter-btn" data-filter="time" data-value="60">1小时内</button>
+                    <button class="filter-btn" data-filter="time" data-value="120">2小时内</button>
+                </div>
+            </div>
+
+            <div class="filter-group">
+                <label>难度级别（单选）</label>
+                <div class="filter-options" id="difficultyFilters">
+                    <button class="filter-btn" data-filter="difficulty" data-value="easy">简单</button>
+                    <button class="filter-btn" data-filter="difficulty" data-value="medium">中等</button>
+                    <button class="filter-btn" data-filter="difficulty" data-value="hard">困难</button>
+                </div>
+            </div>
+
+            <div class="action-btns">
+                <button class="btn btn-primary" onclick="applyFilters()">应用筛选</button>
+                <button class="btn btn-secondary" onclick="resetFilters()">重置条件</button>
+            </div>
+        </div>
+
+        <!-- 保底提示 -->
+        <div class="fallback-notice" id="fallbackNotice">
+            <strong>💡 智能推荐：</strong>您的条件较为严格，已为您放宽部分条件，优先保证有菜可吃。以下是最佳匹配方案：
+        </div>
+
+        <!-- 统计 -->
+        <div class="stats" id="statsText">共收录 <strong>12</strong> 道传统家常菜</div>
+
+        <!-- 菜谱列表 -->
+        <div class="recipe-grid" id="recipeGrid">
+            <!-- 内容由JS生成 -->
+        </div>
+
+        <!-- 空状态 - 理论上不会显示 -->
+        <div class="empty-state" id="emptyState" style="display: none;">
+            <h3>未找到匹配的菜谱</h3>
+            <p>请尝试调整筛选条件，或减少限制条件</p>
+        </div>
+    </div>
+
+    <!-- 详情模态框 -->
+    <div class="modal" id="recipeModal" onclick="closeModalOnBackground(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="modal-header" style="position: relative;">
+                <div class="fallback-badge" id="modalFallbackBadge" style="display: none;">智能推荐</div>
+                <img id="modalImg" src="" alt="">
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <h2 class="modal-title" id="modalTitle"></h2>
+                
+                <div class="section">
+                    <div class="section-title">📝 基础信息</div>
+                    <p id="modalMeta" style="color: #666; line-height: 2;"></p>
+                </div>
+
+                <div class="section">
+                    <div class="section-title">🥘 所需食材</div>
+                    <div class="ingredients-list" id="modalIngredients"></div>
+                </div>
+
+                <div class="section">
+                    <div class="section-title">👨‍🍳 烹饪步骤</div>
+                    <ol class="steps-list" id="modalSteps"></ol>
+                </div>
+
+                <div class="tips-box">
+                    <div class="tips-title">💡 厨师叮嘱</div>
+                    <p id="modalTips" style="color: #5d4037; line-height: 1.8;"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>食点</p>
+        <p style="margin-top: 0.5rem; font-size: 0.9rem;">© 刘宇杰小组</p>
+    </footer>
+
+    <script>
+        // 菜谱数据库（12道菜）
+        const recipes = [
+            {
+                id: 1,
+                name: "麻婆豆腐",
+                image: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800",
+                taste: ["spicy", "savory"],
+                avoid: [],
+                time: 30,
+                difficulty: "easy",
+                calories: "280卡",
+                ingredients: ["嫩豆腐 400克", "牛肉末 100克", "豆瓣酱 2勺", "花椒粉 1勺", "蒜末 适量", "青蒜苗 2根", "生抽 1勺", "淀粉水 适量"],
+                steps: [
+                    "豆腐切成2厘米见方的块，放入加盐的开水中焯烫2分钟，去除豆腥味，捞出沥干备用。",
+                    "炒锅烧热倒油，放入牛肉末炒至变色，加入豆瓣酱炒出红油，再放入蒜末爆香。",
+                    "加入适量清水（没过豆腐一半即可），轻轻放入豆腐，中小火烧3-5分钟入味。",
+                    "分三次淋入淀粉水勾芡，每次轻轻推匀，使汤汁浓稠包裹豆腐。",
+                    "出锅装盘，撒上花椒粉和青蒜末即可上桌。"
+                ],
+                tips: "豆腐焯水时加盐能去腥并保持形状；勾芡要分次进行，汤汁才能均匀包裹豆腐；花椒粉最后撒，香气更浓郁。"
+            },
+            {
+                id: 2,
+                name: "清蒸鲈鱼",
+                image: "https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?w=800",
+                taste: ["light", "savory"],
+                avoid: ["seafood"],
+                time: 30,
+                difficulty: "medium",
+                calories: "180卡",
+                ingredients: ["鲈鱼 1条（约500克）", "姜丝 20克", "葱丝 30克", "蒸鱼豉油 3勺", "料酒 2勺", "食用油 适量", "红椒丝 少许"],
+                steps: [
+                    "鲈鱼处理干净，两面各划三刀便于入味，用料酒和少许盐内外抹匀腌制10分钟。",
+                    "盘底铺姜片，鱼身也塞入姜片，水开后上锅大火蒸8-10分钟（视鱼大小而定）。",
+                    "关火后焖2分钟再开盖，倒掉盘中蒸出的腥水，捡去旧姜片。",
+                    "鱼身铺上新鲜的葱姜丝、红椒丝，烧热油（冒烟）淋在葱丝上激发出香味。",
+                    "沿盘边淋入蒸鱼豉油，不要直接淋在鱼身上，保持鱼肉洁白。"
+                ],
+                tips: "蒸鱼时间不宜过长，鱼肉刚好脱骨最嫩；热油要烧至八成热才能激发出葱香；倒掉蒸鱼水是去腥关键。"
+            },
+            {
+                id: 3,
+                name: "红烧肉",
+                image: "https://pic.rmb.bdstatic.com/bjh/3f1a53f0509/250108/c9682bdeb30c9978300d3d53847721e0.jpeg",
+                taste: ["sweet", "savory", "rich"],
+                avoid: ["pork"],
+                time: 120,
+                difficulty: "hard",
+                calories: "450卡",
+                ingredients: ["五花肉 500克", "冰糖 30克", "生抽 3勺", "老抽 1勺", "料酒 3勺", "八角 2个", "桂皮 1小块", "葱姜 适量"],
+                steps: [
+                    "五花肉切成3厘米见方的块，冷水下锅，加料酒姜片焯水去血沫，捞出洗净沥干。",
+                    "锅中少油，放入冰糖小火慢炒，炒至枣红色（糖色）时迅速倒入肉块翻炒上色。",
+                    "加入葱姜、八角、桂皮炒香，加入料酒、生抽、老抽翻炒均匀。",
+                    "加入开水没过肉块（一定要开水），大火烧开转小火慢炖1.5小时。",
+                    "最后大火收汁，不停翻炒至汤汁浓稠包裹肉块，色泽红亮即可出锅。"
+                ],
+                tips: "炒糖色是关键，火候要小耐心炒；必须加开水，冷水会让肉质紧缩变柴；收汁时要不停翻炒防止糊底。"
+            },
+            {
+                id: 4,
+                name: "番茄炒蛋",
+                image: "https://images.unsplash.com/photo-1555126634-323283e090fa?w=800",
+                taste: ["sour", "sweet"],
+                avoid: ["eggs"],
+                time: 15,
+                difficulty: "easy",
+                calories: "220卡",
+                ingredients: ["鸡蛋 3个", "番茄 2个", "葱花 适量", "盐 1勺", "糖 1勺", "番茄酱 1勺（可选）"],
+                steps: [
+                    "番茄顶部划十字，开水烫后去皮（也可不去），切成小块；鸡蛋打散加少许盐。",
+                    "热锅倒油，油热后倒入蛋液，用筷子划散炒至凝固，盛出备用。",
+                    "锅中加少许油，放入番茄块翻炒，用铲子压一压帮助出汁。",
+                    "加入番茄酱、糖、盐调味，倒入炒好的鸡蛋翻炒均匀。",
+                    "撒上葱花，汤汁浓稠包裹鸡蛋即可出锅。"
+                ],
+                tips: "番茄去皮口感更好；加少许糖可以中和酸味；鸡蛋不要炒太老，凝固即可盛出；保留一些汤汁拌饭最佳。"
+            },
+            {
+                id: 5,
+                name: "蒜蓉西兰花",
+                image: "https://images.unsplash.com/photo-1459411552884-841db9b3cc2a?w=800",
+                taste: ["light", "savory"],
+                avoid: [],
+                time: 15,
+                difficulty: "easy",
+                calories: "120卡",
+                ingredients: ["西兰花 300克", "大蒜 5瓣", "蚝油 1勺", "盐 适量", "食用油 适量"],
+                steps: [
+                    "西兰花切小朵，用淡盐水浸泡10分钟去除杂质，洗净备用。",
+                    "烧一锅水，加少许盐和几滴油，水开后放入西兰花焯烫1-2分钟，捞出过凉水保持翠绿。",
+                    "大蒜切末，热锅凉油，小火将蒜末煸至微黄色（注意不要炸糊）。",
+                    "倒入沥干水分的西兰花，大火快炒，加入蚝油和盐调味。",
+                    "翻炒均匀即可出锅，保持脆嫩口感。"
+                ],
+                tips: "焯水时加盐和油能让西兰花颜色更翠绿；炒制时间不宜过长，保持脆嫩口感；蒜末小火慢炸才香。"
+            },
+            {
+                id: 6,
+                name: "宫保鸡丁",
+                image: "https://images.unsplash.com/photo-1525755662778-989d0524087e?w=800",
+                taste: ["spicy", "sweet", "sour"],
+                avoid: ["nuts"],
+                time: 30,
+                difficulty: "medium",
+                calories: "320卡",
+                ingredients: ["鸡胸肉 300克", "花生米 50克", "干辣椒 10个", "花椒 1勺", "葱姜蒜 适量", "糖 2勺", "醋 2勺", "生抽 2勺", "淀粉 适量"],
+                steps: [
+                    "鸡肉切丁，加料酒、生抽、淀粉腌制15分钟；调好糖醋汁（糖:醋:生抽:水=2:2:1:2）。",
+                    "热锅凉油，小火将花生米炸至金黄酥脆，盛出晾凉备用。",
+                    "锅中留底油，爆香干辣椒和花椒，滑入鸡丁快速炒至变色。",
+                    "加入葱姜蒜炒香，倒入调好的料汁大火快炒收汁。",
+                    "最后加入炸好的花生米，翻炒均匀立即出锅。"
+                ],
+                tips: "使用鸡腿肉口感更嫩；花生米最后放保持酥脆；火候要大，动作要快，这是川菜'小煎小炒'的特点。"
+            },
+            {
+                id: 7,
+                name: "酸辣汤",
+                image: "https://images.unsplash.com/photo-1547592166-23ac45744acd?w=800",
+                taste: ["sour", "spicy", "savory"],
+                avoid: ["eggs"],
+                time: 20,
+                difficulty: "easy",
+                calories: "150卡",
+                ingredients: ["豆腐 150克", "木耳 5朵", "香菇 3朵", "火腿 50克", "鸡蛋 1个", "醋 3勺", "白胡椒粉 1勺", "淀粉 2勺", "香菜 适量"],
+                steps: [
+                    "木耳、香菇提前泡发切丝，豆腐、火腿切丝，鸡蛋打散备用。",
+                    "锅中加水烧开，放入木耳、香菇、火腿丝煮5分钟出味。",
+                    "加入豆腐丝，调入盐、生抽、老抽调色，煮2分钟。",
+                    "淋入淀粉水勾芡至浓稠，转圈淋入蛋液形成蛋花，不要马上搅动。",
+                    "关火后加入醋和白胡椒粉，撒香菜末，淋香油即可。"
+                ],
+                tips: "醋和胡椒粉关火后再加，以免酸味挥发；勾芡要适中，太稀没口感，太稠像浆糊；蛋液要细流淋入。"
+            },
+            {
+                id: 8,
+                name: "凉拌黄瓜",
+                image: "https://images.unsplash.com/photo-1449300079323-02e209d9d3a6?w=800",
+                taste: ["sour", "spicy", "light"],
+                avoid: [],
+                time: 10,
+                difficulty: "easy",
+                calories: "80卡",
+                ingredients: ["黄瓜 2根", "大蒜 3瓣", "小米辣 2个", "生抽 2勺", "陈醋 2勺", "糖 1勺", "香油 1勺", "花椒油 1勺"],
+                steps: [
+                    "黄瓜洗净，用刀拍裂后切成段（拍比切更易入味），放入大碗中。",
+                    "加1勺盐拌匀腌制10分钟，杀出水分后倒掉水，这样更脆爽。",
+                    "大蒜切末，小米辣切圈，加入生抽、醋、糖、香油、花椒油调成汁。",
+                    "将料汁倒入黄瓜中拌匀，腌制15分钟更入味。",
+                    "现拌现吃口感最佳，放置过久会出水变软。"
+                ],
+                tips: "拍黄瓜比切黄瓜更易入味；腌制后一定要倒掉水分；现拌现吃口感最脆爽；花椒油是点睛之笔。"
+            },
+            {
+                id: 9,
+                name: "咖喱鸡肉饭",
+                image: "https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=800",
+                taste: ["rich", "savory"],
+                avoid: [],
+                time: 45,
+                difficulty: "medium",
+                calories: "580卡",
+                ingredients: ["鸡腿肉 300克", "土豆 1个", "胡萝卜 1根", "洋葱 半个", "咖喱块 4块", "椰浆 100毫升（可选）", "米饭 适量"],
+                steps: [
+                    "鸡腿肉去骨切块，土豆、胡萝卜、洋葱切丁备用。",
+                    "热锅炒香洋葱，加入鸡肉炒至变色，再加入土豆胡萝卜翻炒。",
+                    "加水没过食材，大火煮开撇去浮沫，中火煮15分钟至土豆变软。",
+                    "关火，将咖喱块掰开放入，搅拌至完全融化。",
+                    "倒入椰浆（增加浓郁度），小火煮至汤汁浓稠，浇在米饭上即可。"
+                ],
+                tips: "使用鸡腿肉比鸡胸肉更嫩不易柴；椰浆是点睛之笔增加浓郁口感；咖喱块要关火后再加防止糊底。"
+            },
+            {
+                id: 10,
+                name: "蔬菜沙拉",
+                image: "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=800",
+                taste: ["light", "sour"],
+                avoid: ["dairy"],
+                time: 10,
+                difficulty: "easy",
+                calories: "150卡",
+                ingredients: ["生菜 100克", "小番茄 8个", "黄瓜 半根", "紫甘蓝 50克", "玉米粒 30克", "橄榄油 1勺", "柠檬汁 1勺", "黑胡椒 适量"],
+                steps: [
+                    "所有蔬菜洗净，生菜撕成小块，黄瓜切片，小番茄对半切开，紫甘蓝切丝。",
+                    "蔬菜放入冰水中浸泡5分钟（保持脆爽），捞出彻底沥干水分。",
+                    "橄榄油、柠檬汁、盐、黑胡椒调成油醋汁（油醋比例3:1）。",
+                    "吃之前再淋酱汁拌匀，防止蔬菜过早接触盐分出水。",
+                    "可根据喜好加入煮鸡蛋或鸡胸肉增加蛋白质。"
+                ],
+                tips: "蔬菜要彻底沥干，否则酱汁挂不住；油醋汁现调现用；吃前再拌防止出水；冰水浸泡能增加脆度。"
+            },
+            {
+                id: 11,
+                name: "糖醋里脊",
+                image: "https://images.unsplash.com/photo-1563379926898-05f4575a45d8?w=800",
+                taste: ["sweet", "sour"],
+                avoid: ["pork"],
+                time: 45,
+                difficulty: "medium",
+                calories: "380卡",
+                ingredients: ["猪里脊 300克", "淀粉 50克", "番茄酱 3勺", "糖 3勺", "醋 2勺", "白芝麻 适量", "鸡蛋 1个"],
+                steps: [
+                    "里脊肉切成粗条，加料酒、盐、鸡蛋腌制15分钟入味。",
+                    "裹上干淀粉，抖掉多余粉末，油温六成热（筷子插入冒小泡）炸至金黄捞出。",
+                    "油温升高至八成热，复炸30秒使外壳酥脆，捞出沥油。",
+                    "锅中留底油，炒香番茄酱，加入糖醋汁（糖:醋:水=3:2:1）熬至浓稠起泡。",
+                    "倒入炸好的里脊快速翻炒裹匀酱汁，撒白芝麻出锅。"
+                ],
+                tips: "复炸是关键，能让外壳更酥脆；糖醋汁要熬至浓稠起泡再下肉；动作要快，裹匀立即出锅防变软。"
+            },
+            {
+                id: 12,
+                name: "牛肉拉面",
+                image: "https://images.unsplash.com/photo-1552611052-33e04de081de?w=800",
+                taste: ["rich", "savory"],
+                avoid: ["beef", "gluten"],
+                time: 120,
+                difficulty: "hard",
+                calories: "520卡",
+                ingredients: ["牛骨 500克", "牛肉 300克", "拉面 200克", "白萝卜 200克", "香菜 适量", "蒜苗 适量", "辣椒油 适量", "香料包（八角、桂皮、草果等）"],
+                steps: [
+                    "牛骨、牛肉冷水下锅焯水，洗净血沫备用。",
+                    "大锅加足量水，放入牛骨、牛肉、香料包，大火烧开转小火炖2小时。",
+                    "捞出牛肉切片，汤中加入白萝卜片煮熟，加盐调味。",
+                    "另起锅煮面，煮至八分熟捞出放入碗中。",
+                    "浇上热汤，码上牛肉片、萝卜片，撒香菜蒜苗，淋辣椒油即可。"
+                ],
+                tips: "汤底要长时间炖煮才能浓郁；牛肉不要煮太久，捞出切片后口感更好；面条要劲道，煮制时间根据粗细调整。"
+            }
+        ];
+
+        // 当前筛选状态
+        let currentFilters = {
+            tastes: [],
+            avoids: [],
+            time: null,
+            difficulty: null
+        };
+
+        // 保底机制状态
+        let isFallbackMode = false;
+        let fallbackReason = "";
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            renderRecipes(recipes);
+            initFilterButtons();
+        });
+
+        // 初始化筛选按钮
+        function initFilterButtons() {
+            const buttons = document.querySelectorAll('.filter-btn');
+            buttons.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const filterType = this.dataset.filter;
+                    const value = this.dataset.value;
+                    
+                    if (filterType === 'taste' || filterType === 'avoid') {
+                        // 多选逻辑
+                        if (this.classList.contains('active')) {
+                            this.classList.remove('active');
+                            currentFilters[filterType + 's'] = currentFilters[filterType + 's'].filter(v => v !== value);
+                        } else {
+                            this.classList.add('active');
+                            currentFilters[filterType + 's'].push(value);
+                        }
+                    } else {
+                        // 单选逻辑
+                        const group = document.querySelectorAll(`[data-filter="${filterType}"]`);
+                        group.forEach(b => b.classList.remove('active'));
+                        this.classList.add('active');
+                        currentFilters[filterType] = value;
+                    }
+                });
+            });
+        }
+
+        // 核心筛选逻辑（带保底机制）
+        function applyFilters() {
+            isFallbackMode = false;
+            fallbackReason = "";
+            
+            // 第一步：严格筛选（必须满足所有条件）
+            let result = strictFilter(recipes);
+            
+            // 第二步：如果没有结果，启动保底机制
+            if (result.length === 0) {
+                isFallbackMode = true;
+                result = fallbackFilter();
+            }
+            
+            // 渲染结果
+            renderRecipes(result, isFallbackMode);
+            updateStats(result.length, isFallbackMode);
+            showFallbackNotice(isFallbackMode);
+        }
+
+        // 严格筛选（所有条件必须满足）
+        function strictFilter(recipeList) {
+            return recipeList.filter(recipe => {
+                // 1. 检查忌口（硬性排除）
+                if (currentFilters.avoids.length > 0) {
+                    const hasAvoided = currentFilters.avoids.some(avoid => {
+                        if (avoid === 'spicy') {
+                            return recipe.taste.includes('spicy');
+                        }
+                        return recipe.avoid.includes(avoid);
+                    });
+                    if (hasAvoided) return false;
+                }
+
+                // 2. 检查口味（满足任一即可）
+                if (currentFilters.tastes.length > 0) {
+                    const hasTaste = currentFilters.tastes.some(taste => recipe.taste.includes(taste));
+                    if (!hasTaste) return false;
+                }
+
+                // 3. 检查时间（小于等于）
+                if (currentFilters.time) {
+                    if (recipe.time > parseInt(currentFilters.time)) return false;
+                }
+
+                // 4. 检查难度（完全匹配）
+                if (currentFilters.difficulty) {
+                    if (recipe.difficulty !== currentFilters.difficulty) return false;
+                }
+
+                return true;
+            });
+        }
+
+        // 保底机制：逐级放宽条件，确保至少返回一道菜
+        function fallbackFilter() {
+            let result = [];
+            let stages = [];
+            
+            // 阶段1：只保留忌口排除（食品安全优先），放宽其他所有条件
+            result = recipes.filter(recipe => {
+                if (currentFilters.avoids.length > 0) {
+                    const hasAvoided = currentFilters.avoids.some(avoid => {
+                        if (avoid === 'spicy') return recipe.taste.includes('spicy');
+                        return recipe.avoid.includes(avoid);
+                    });
+                    if (hasAvoided) return false;
+                }
+                return true;
+            });
+            
+            if (result.length > 0) {
+                fallbackReason = "已为您保留忌口排除，放宽口味、时间和难度要求";
+                // 按口味相似度排序
+                if (currentFilters.tastes.length > 0) {
+                    result.sort((a, b) => {
+                        const aMatch = a.taste.filter(t => currentFilters.tastes.includes(t)).length;
+                        const bMatch = b.taste.filter(t => currentFilters.tastes.includes(t)).length;
+                        return bMatch - aMatch;
+                    });
+                }
+                return result;
+            }
+            
+            // 阶段2：如果连忌口都太严格（比如排除了所有肉），则只排除最严重的过敏原，保留其他
+            // 优先保留：素食选项
+            const vegRecipes = recipes.filter(r => r.avoid.length === 0 || r.avoid.includes('eggs') || r.avoid.includes('dairy'));
+            if (vegRecipes.length > 0) {
+                fallbackReason = "已为您推荐素食选项（无肉无海鲜）";
+                return vegRecipes;
+            }
+            
+            // 阶段3：最终保底 - 返回所有简单快手的菜
+            const easyFast = recipes.filter(r => r.difficulty === 'easy' && r.time <= 30);
+            if (easyFast.length > 0) {
+                fallbackReason = "已为您推荐简单快手的菜品";
+                return easyFast;
+            }
+            
+            // 终极保底：返回全部菜谱
+            fallbackReason = "已为您展示所有可用菜谱";
+            return recipes;
+        }
+
+        // 显示保底提示
+        function showFallbackNotice(show) {
+            const notice = document.getElementById('fallbackNotice');
+            if (show) {
+                notice.innerHTML = `<strong>💡 智能推荐：</strong>${fallbackReason}，优先保证有菜可吃。以下是最佳匹配方案：`;
+                notice.classList.add('show');
+            } else {
+                notice.classList.remove('show');
+            }
+        }
+
+        // 重置筛选
+        function resetFilters() {
+            currentFilters = {
+                tastes: [],
+                avoids: [],
+                time: null,
+                difficulty: null
+            };
+            
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            isFallbackMode = false;
+            showFallbackNotice(false);
+            renderRecipes(recipes, false);
+            updateStats(recipes.length, false);
+        }
+
+        // 更新统计
+        function updateStats(count, isFallback) {
+            const statsText = document.getElementById('statsText');
+            if (isFallback) {
+                statsText.innerHTML = `为您找到 <strong>${count}</strong> 道推荐菜谱（智能匹配）`;
+            } else {
+                statsText.innerHTML = `共收录 <strong>${count}</strong> 道传统家常菜`;
+            }
+        }
+
+        // 渲染菜谱列表
+        function renderRecipes(recipeList, isFallback = false) {
+            const grid = document.getElementById('recipeGrid');
+            const emptyState = document.getElementById('emptyState');
+            
+            if (recipeList.length === 0) {
+                // 理论上不会触发，因为保底机制会确保至少返回一道菜
+                grid.innerHTML = '';
+                emptyState.style.display = 'block';
+                return;
+            }
+            
+            emptyState.style.display = 'none';
+            
+            const tasteMap = {
+                spicy: '辣', sour: '酸', sweet: '甜', savory: '鲜',
+                light: '淡', rich: '浓'
+            };
+            
+            const difficultyMap = {
+                easy: '简单', medium: '中等', hard: '困难'
+            };
+            
+            grid.innerHTML = recipeList.map((recipe, index) => {
+                // 保底模式下，前3道标记为"推荐"
+                const isTopPick = isFallback && index < 3;
+                
+                return `
+                    <div class="recipe-card" onclick="openRecipe(${recipe.id}, ${isFallback})" style="position: relative;">
+                        ${isTopPick ? '<div class="fallback-badge">智能推荐</div>' : ''}
+                        <img src="${recipe.image}" alt="${recipe.name}" class="recipe-image">
+                        <div class="recipe-content">
+                            <h3 class="recipe-title">${recipe.name}</h3>
+                            <div class="recipe-meta">
+                                <span>⏱️ ${recipe.time}分钟</span>
+                                <span>📊 ${difficultyMap[recipe.difficulty]}</span>
+                                <span>🔥 ${recipe.calories}</span>
+                            </div>
+                            <div class="recipe-tags">
+                                ${recipe.taste.map(t => `<span class="tag">${tasteMap[t]}</span>`).join('')}
+                                ${recipe.avoid.length > 0 ? recipe.avoid.map(a => `<span class="tag avoid">含${a}</span>`).join('') : ''}
+                                ${isTopPick ? '<span class="tag fallback">最佳匹配</span>' : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // 打开详情
+        function openRecipe(id, isFallback = false) {
+            const recipe = recipes.find(r => r.id === id);
+            if (!recipe) return;
+            
+            const difficultyMap = { easy: '简单', medium: '中等', hard: '困难' };
+            
+            document.getElementById('modalImg').src = recipe.image;
+            document.getElementById('modalTitle').textContent = recipe.name;
+            document.getElementById('modalMeta').innerHTML = `
+                烹饪时间：${recipe.time}分钟 | 
+                难度：${difficultyMap[recipe.difficulty]} | 
+                热量：${recipe.calories}
+                ${isFallback ? '<br><span style="color: #2196f3; font-size: 0.9rem;">💡 此为智能推荐菜品，可能部分条件不完全匹配，但保证安全可食</span>' : ''}
+            `;
+            
+            document.getElementById('modalIngredients').innerHTML = recipe.ingredients.map(ing => 
+                `<div class="ingredient-item">${ing}</div>`
+            ).join('');
+            
+            document.getElementById('modalSteps').innerHTML = recipe.steps.map(step => 
+                `<li>${step}</li>`
+            ).join('');
+            
+            document.getElementById('modalTips').textContent = recipe.tips;
+            
+            // 显示保底标记
+            document.getElementById('modalFallbackBadge').style.display = isFallback ? 'block' : 'none';
+            
+            document.getElementById('recipeModal').style.display = 'block';
+            document.body.style.overflow = 'hidden';
+        }
+
+        // 关闭详情
+        function closeModal() {
+            document.getElementById('recipeModal').style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
+
+        // 点击背景关闭
+        function closeModalOnBackground(event) {
+            if (event.target.id === 'recipeModal') {
+                closeModal();
+            }
+        }
+
+        // ESC键关闭
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeModal();
+            }
+        });
+    </script>
+</body>
+</html>
